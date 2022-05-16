@@ -8,41 +8,58 @@ import sqlalchemy as sa
 
 class DataLoader():
 
-    def __init__(self, filepath:str) -> None:
-        """
-        Loads a CSV file path into a Dataframe
+    
+    def __init__(self, filepath:str, index=None, multi_file_load=False) -> None:
+    # if statement to load files and set index
+    
+    if multi_file_load:
+        # load multiple files
+        store = []
+        for filenum, filename in enumerate(glob(filepath)):
+            # logger.info(f"\tLoading file number {filenum}")
+            tmp = pd.read_csv(filename, header=0)
+            store.append(tmp)
+        keep_index = index is None
+        df = pd.concat(store, axis=0, ignore_index=keep_index)
+    # Load a single file
+    else:
+        df = pd.read_csv(filepath, header=0)
+    # Set index of our data
+    if index is not None:
+        df = df.set_index(index)
+    self.df = df
+    # def __init__(self, filepath:str) -> None:
+    #     """
+    #     Loads a CSV file path into a Dataframe
 
-        Args:
-            filepath (str): file path to the CSV file
-        """
-        pass
+    #     Args:
+    #         filepath (str): file path to the CSV file
+    #     """
+    #     pass
 
+    # - Fill in the head() method so it prints the head of the DataFrame.
     def head(self) -> None:
         """
         prints the head of the dataframe to console
         """
-        pass
+        print(self.df.head())
 
-    def add_index(self, index_name:str, colum_names:list) -> None:
+    def add_index(self, col_list, index_name="index") -> None:
         """
-        Create a dataframe index column from concatenating a series of column values. Column values are concatenated by a dash "-".
-
-        For example if you have three columns such as: artist="Metallica", song="Ride the Lighting"
-        the index would be ""Metallica-Ride the Lighting"
-
-        Args:
-            index_name (str): the index column name
-            colum_names (list): list of columns to concatenate into an index column
+        Creates an index by concatenating columns values
         """
-        pass
+        df = self.df
+        # Concatenates columns, calls it col_list and turns it into the primary key aka index
+        df[index_name] = df[col_list].apply(lambda row: "-".join(row.values.astype(str)), axis = 1)
+        df.set_index(index_name, inplace = True)
+        # replaces whatever the index used to be with our shiny, new, smushed up index
+        self.df = df
 
     def sort(self, column_name:str) -> None:
-        """
-        Sorts the dataframe by a particular column
-
-        Args:
-            column_name (str): column name to sort by
-        """
+        df = self.df
+        # sorts the dataframe by a later specified column
+        df.sort_values(column_name)
+        self.df = df
 
     def load_to_db(self, db_engine, db_table_name:str) -> None:
         """
@@ -52,10 +69,13 @@ class DataLoader():
             db_engine (SqlAlchemy Engine): SqlAlchemy engine (or connection) to use to insert into database
             db_table_name (str): name of database table to insert to
         """
+        self.df.to_sql(name=db_table_name, con=self.engine, if_exists='append', chunksize=2000)
 
 
-
+"""Outside the DataLoader class, fill in the db_engine() function to create a SQLAlchemy database engine. For this project, the values needed to configure it can be passed in as arguments, rather than using a config file.
+"""
 def db_engine(db_host:str, db_user:str, db_pass:str, db_name:str="spotify") -> sa.engine.Engine:
+    
     """Using SqlAlchemy, create a database engine and return it
 
     Args:
@@ -67,7 +87,11 @@ def db_engine(db_host:str, db_user:str, db_pass:str, db_name:str="spotify") -> s
     Returns:
         sa.engine.Engine: sqlalchemy engine
     """
-    pass
+    #create enginge using sqlalchmey
+    engine = create_engine(f'mysql+pymysql://{db_user}:{db_pass}@{db_host}/{db_name}', future = True)
+    metadata = MetaData(bind=engine)
+    conn = engine.connect()
+    return engine
 
 
 def db_create_tables(db_engine, drop_first:bool = False) -> None:
@@ -82,10 +106,38 @@ def db_create_tables(db_engine, drop_first:bool = False) -> None:
     """
     meta = sa.MetaData(bind=db_engine)
 
-    # your code to define tables go in here
-    #   - Be careful, some of the columns like album.available_markets are very long. Make sure you give enough DB length for these. ie: 10240 (10kb)
 
-    # your code to drop and create tables go here
+
+class DataTable():
+        """Create an object that can update the data in our mariaDB tables"""
+
+    def db_engine(db_host:str, db_user:str, db_pass:str, db_name:str="spotify") -> sa.engine.Engine:
+        super().__init__()
+        """Loads the dataframe into a database table."""
+            # create an engine and connection to our docker mariadb
+        db_host = config['db_host'] if db_host is None else db_host
+        db_user = config['db_user'] if db_user is None else db_user
+        db_pass = config['db_pass'] if db_pass is None else db_pass
+        db_name = config['db_name'] if db_name is None else db_name
+
+        engine = create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}/{db_name}", future=True)
+        metadata = MetaData(bind=engine)
+        conn = engine.connect()
+        self.engine = engine
+        self.metadata = metadata
+        self.conn = conn
+
+    def open(self):
+        conn = self.engine.connect()
+        self.conn = conn
+
+
+    def close(self):
+        conn = self.conn
+        conn.close()
+
+        self.df.to_sql(name=db_table_name, con=self.engine, if_exists='append', chunksize=2000)
+
 
 
 def main():
