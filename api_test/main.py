@@ -1,16 +1,14 @@
 import pandas as pd
-from datetime import datetime as dt
 from flask import Flask, request
 
 # create a dictionary containing superhero information
-super_data = [
-    {"name": "Rogue", "superpower": "Can absorb others powers",
-        "weakness": "fragility of her broken mind"},
-    {"name": "Psylocke", "superpower": " telepathy, psychic knife",
-        "weakness": "abilities are tied to emotions"},
-    {"name": "Kitty Pryde", "superpower": "Phasing",
-        "weakness": "inability to control powers"}
-]
+super_data = [{"name": "Rogue", "superpower": "Can absorb others powers",
+                "weakness": "fragility of her broken mind"},
+            {"name": "Psylocke", "superpower": " telepathy, psychic knife",
+                "weakness": "abilities are tied to emotions"},
+            {"name": "Kitty Pryde", "superpower": "Phasing",
+                "weakness": "inability to control powers"}]
+
 
 """set up dataframe"""
 # turn said dictionary into a dataframe
@@ -33,7 +31,6 @@ def stats():
     name = request.args.get('name', default='Bri')
     superpower = request.args.get("superpower", default="Slay all day")
     weakness = request.args.get("weakness", default="come closer and find out")
-    
     if name is not 'Bri':
         # narrow down the results by name
         result_df = super_df.loc[super_df["name"] == name]
@@ -63,7 +60,6 @@ def add_stats():
         # placeholders to return results later
         new_recruits = []
         hard_pass = []
-
         # iterate through the request
         data = request.json
         for hero in data:
@@ -91,7 +87,7 @@ def add_stats():
         # return error. does not compute
         return {"status": 'error',
                 "error_msg": str(err)}, 400, {
-            "content-type": 'application/json'}
+                "content-type": 'application/json'}
 
 
 if __name__ == '__main__':
