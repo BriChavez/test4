@@ -57,6 +57,46 @@ def stats():
     return resp_json, 200, resp_headers
 
 
+@app.route("/add_stats", methods=['POST'])
+def add_stats():
+    """function to add heros to the database"""
+    # get db from flask cache
+    global super_df
+    try:
+        # placeholders to return results later
+        new_recruits = []
+        hard_pass = []
+
+        # iterate through the request
+        data = request.json
+        for hero in data:
+            # double check to see if alll required information is present
+            if ('name' in hero) and ('superpower' in hero) and ('weakness' in hero):
+                # sets the index for the new hero to their name
+                index = hero['name']
+                # give them their own row
+                super_df.loc[hero['name']] = hero
+                # add them to the roster
+                new_recruits.append(hero)
+            else:
+                # sorry, next time come back with full data
+                hard_pass.append(hero)
+        # generate the response
+        resp_json = {"heroes_added": len(new_recruits),
+                     "new_team": new_recruits,
+                     "reject_pile": hard_pass}
+        # response headers
+        resp_headers = {"content-type": "application/json"}
+        # return status as ok
+        return resp_json, 200, resp_headers
+
+    except Exception as err:
+        # return error. does not compute
+        return {"status": 'error',
+                "error_msg": str(err)}, 400, {
+            "content-type": 'application/json'}
+
+
 if __name__ == '__main__':
     """Be sure to include the following snippet at the bottom of your main.py file, and test the app runs on localhost port 5050 when you run the file"""
     app.run('0.0.0.0', 5050)
